@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
 import javax.servlet.http.Cookie;
 
 import org.jboss.aerogear.controller.log.AeroGearLogger;
@@ -135,9 +137,9 @@ public class ParameterExtractor {
     private static Consumer getConsumer(final RouteContext routeContext, final Map<String, Consumer> consumers, 
             final Parameter<?> parameter) {
         final Set<String> mediaTypes = routeContext.getRoute().consumes();
-        final String contentType = routeContext.getRequest().getContentType();
-        if (contentType != null) {
-            final Consumer consumer = consumers.get(contentType);
+        final Optional<String> contentType = extractContentType(routeContext);
+        if (contentType.isPresent()) {
+            final Consumer consumer = consumers.get(contentType.get());
             if (consumer != null) {
                 return consumer;
             }
@@ -150,6 +152,19 @@ public class ParameterExtractor {
             }
         }
         throw ExceptionBundle.MESSAGES.noConsumerForMediaType(parameter, consumers.values(), mediaTypes);
+    }
+    
+    private static Optional<String> extractContentType(final RouteContext routeContext) {
+    	final String contentType = routeContext.getRequest().getContentType();
+    	if (contentType != null) {
+    		try {
+				MimeType mimeType = new MimeType(contentType);
+				return Optional.of(mimeType.getBaseType());
+			} catch (MimeTypeParseException e) {
+				throw new RuntimeException("Error parsing content-type " + contentType, e);
+			}
+    	}
+    	return Optional.absent();
     }
     
     public static Optional<?> extractPathParam(final RouteContext routeContext, final RequestParameter<?> param) throws Exception {
