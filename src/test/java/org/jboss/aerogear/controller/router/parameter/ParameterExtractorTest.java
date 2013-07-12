@@ -18,6 +18,7 @@
 package org.jboss.aerogear.controller.router.parameter;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -35,6 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import org.jboss.aerogear.controller.Car;
 import org.jboss.aerogear.controller.SampleController;
 import org.jboss.aerogear.controller.router.Consumer;
+import org.jboss.aerogear.controller.router.MediaType;
 import org.jboss.aerogear.controller.router.Route;
 import org.jboss.aerogear.controller.router.RouteContext;
 import org.jboss.aerogear.controller.util.ParameterExtractor;
@@ -309,6 +311,40 @@ public class ParameterExtractorTest {
         when(route.getParameters()).thenReturn(parameters);
         ParameterExtractor.extractArguments(routeContext, Collections.<String, Consumer> emptyMap());
     }
+    
+    @Test
+	public void extractArgumentsWithCharsetDefined() throws Exception {
+    	// build parameters
+    	final List<Parameter<?>> parameters = asList(Parameter.param(String.class));
+        when(route.getParameters()).thenReturn(parameters);
+    	when(request.getRequestURI()).thenReturn("/myapp/cars");
+    	when(servletContext.getContextPath()).thenReturn("/myapp");
+    	when(request.getContentType()).thenReturn("application/json; charset=utf-8");
+    	Map<String, Consumer> consumers = new HashMap<String, Consumer>();
+
+		// using a custom implementation to skip consumer logic
+		consumers.put(MediaType.JSON.getType(), new Consumer() {
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public <T> T unmarshall(HttpServletRequest request, Class<T> type) {
+				return (T) "test";
+			}
+
+			@Override
+			public String mediaType() {
+				return MediaType.JSON.getType();
+			}
+		});
+    	
+		//extract arguments
+    	Map<String, Object> arguments = ParameterExtractor.extractArguments(
+				routeContext, consumers);
+
+		// verify result
+		assertNotNull("parameter entityParam missing",
+				arguments.get("entityParam"));
+	}
 
     private List<Parameter<?>> asList(final Parameter<?>... p) {
         return new LinkedList<Parameter<?>>(Arrays.asList(p));
